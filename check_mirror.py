@@ -1,4 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+'''
+check_mirror
+
+Check for Debian repository consistency
+usage: check_mirror.py -s wheezy -a arch(ej: amd64) -d /path/to/repository
+'''
 
 import os
 import sys, getopt
@@ -10,20 +17,30 @@ import magic
 import random
 import signal
 
-'''
-check_mirror
+from check_config import config
 
-Check for Debian repository consistency
-usage: check_mirror.py -s wheezy -a arch(ej: amd64) -d /path/to/repository
-'''
+configdata = config("checkrepo.conf")
+datamirrors = configdata.ShowItemSection("mirrors")
+mirrors = []
+for i in range(len(datamirrors)):
+    mirrors.append(mirrors[i][1])
+
+arch = configdata.ShowValueItem("repo","arch").split(",")
+sections = configdata.ShowValueItem("repo","sections").split(",")
+maxjobs = int(configdata.ShowValueItem("conf","maxjobs"))
+exclude_dbg = configdata.ShowValueItem("conf","exclude_dbg") == "True"
+suites = configdata.ShowValueItem("repo","suites").split(",")
+
+
+
 
 # test suite
 
-mirrors = [ "http://debian.mirror.constant.com/debian/", "http://mirror.us.leaseweb.net/debian/",  "http://debian.mirror.gtcomm.net/debian/", "http://mirrors.advancedhosters.com/debian/", "http://mirror.cc.columbia.edu/debian/", "http://debian.uniminuto.edu/debian/"  ]
-sections=('main', 'contrib', 'non-free')
-exclude_dbg=True
+#mirrors = [ "http://debian.mirror.constant.com/debian/", "http://mirror.us.leaseweb.net/debian/",  "http://debian.mirror.gtcomm.net/debian/", "http://mirrors.advancedhosters.com/debian/", "http://mirror.cc.columbia.edu/debian/", "http://debian.uniminuto.edu/debian/"  ]
+#sections=('main', 'contrib', 'non-free')
+#exclude_dbg=True
 
-maxjobs = 6                 # maximum number of concurrent jobs
+#maxjobs = 6                 # maximum number of concurrent jobs
 jobs = []                   # current list of queued jobs
 jobs_args = []
 
@@ -158,4 +175,6 @@ def main(argv):
         sys.exit(2)
 
 if __name__ == "__main__":
-   main(sys.argv[1:])
+   #main(sys.argv[1:])
+   repodeb = Repodeb("check_debian_repository.conf")
+   repodeb.Imprimir()
