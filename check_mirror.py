@@ -2,8 +2,13 @@
 # -*- coding: utf-8 -*-
 '''
 check_mirror
-
 Check for Debian repository consistency
+
+Autor: Jesus Lara
+Correo: jesuslarag@gmail.com
+Licencia: GPL Version 3
+Version: 0.1
+
 usage: check_mirror.py -s wheezy -a arch(ej: amd64) -d /path/to/repository
 '''
 
@@ -30,9 +35,6 @@ sections = configdata.ShowValueItem("repo","sections").split(",")
 maxjobs = int(configdata.ShowValueItem("conf","maxjobs"))
 exclude_dbg = configdata.ShowValueItem("conf","exclude_dbg") == "True"
 suites = configdata.ShowValueItem("repo","suites").split(",")
-
-
-
 
 # test suite
 
