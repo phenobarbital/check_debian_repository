@@ -27,7 +27,7 @@ datamirrors = configdata.ShowItemSection("mirrors")
 mirrors = []
 for i in range(len(datamirrors)):
 	mirrors.append(datamirrors[i][1])
-	
+
 archs = configdata.ShowValueItem("repo","arch").split(",")
 sections = configdata.ShowValueItem("repo","sections").split(",")
 exclude_dbg = configdata.ShowValueItem("conf","exclude_dbg") == "True"
@@ -38,7 +38,7 @@ maxjobs = int(configdata.ShowValueItem("conf","maxjobs"))
 jobs = []                   # current list of queued jobs
 jobs_args = []
 # Default wget options to use for downloading each URL
-wget = "wget -q -nd -np -c -r "
+wget = "wget -nd -np -c -r "
 
 #put all the available packages into this object
 package_objects = {}
@@ -53,13 +53,13 @@ class Deb:
 		mirror = random.choice(mirrors)
 		self.uri = mirror+package.get_field("Filename")
 		self.filename = os.path.join(path, package.get_field("Filename"))
-	
+
 	def get_download_uri(self):
 		return self.uri
-	
+
 	def get_filename(self):
 		return self.filename
-		
+
 	def md5sum(self, blocksize=65536):
 		hash = hashlib.md5()
 		with open(self.filename, "r+b") as f:
@@ -72,7 +72,7 @@ class Deb:
 		if not os.path.exists(d):
 			# directory missing, create directory
 			os.makedirs(d)
-		if exclude_dbg: 
+		if exclude_dbg:
 			if "-dbg" in self.filename:
 				# file is a dbg file
 				return True
@@ -97,7 +97,7 @@ class Deb:
 				print "verify_deb: mimetype failed, remove fake file %s" % self.filename
 				os.remove(self.filename)
 				return False
-		
+
 	def download(self):
 		try:
 			print "downloading %s from %s" % (self.filename, self.uri)
@@ -159,7 +159,7 @@ def analyze_packages_file_wget(path):
 	for p in package_objects:
 		deb = Deb(path, package_objects[p])
 		if not deb.verify_deb():
-			cmd = wget+deb.get_download_uri()
+			cmd = wget+deb.get_download_uri()+' -O '+deb.get_filename()
 			jobs.append(cmd)
 
 def download_deb(filename, url):
@@ -212,7 +212,7 @@ def test_mirror_wget(path, suite, arch):
 	try:
 		for s in suite:
 			for section in sections:
-				for a in archs:
+				for a in arch:
 					arch_folder = "binary-"+a
 					d = os.path.join(path, "dists", s, section, arch_folder)
 					if os.path.exists(d):
@@ -233,7 +233,7 @@ def test_mirror_wget(path, suite, arch):
 		pool.map(call_command, jobs)
 	except:
 		raise
-	
+
 '''
 Start checking of Debian repository
 '''
@@ -287,7 +287,7 @@ def main(argv):
 		if not repo_path:
 			repo_path = os.getcwd()
 		# start checking
-		test_mirror(repo_path, suites, archs)
+		test_mirror_wget(repo_path, suites, archs)
 	except getopt.GetoptError:
 		usage()
 		sys.exit(2)
