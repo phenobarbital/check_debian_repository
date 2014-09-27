@@ -32,7 +32,6 @@ archs = configdata.ShowValueItem("repo","arch").split(",")
 sections = configdata.ShowValueItem("repo","sections").split(",")
 exclude_dbg = configdata.ShowValueItem("conf","exclude_dbg") == "True"
 suites = configdata.ShowValueItem("repo","suites").split(",")
-repo_path = ''
 
 maxjobs = int(configdata.ShowValueItem("conf","maxjobs"))
 jobs = []                   # current list of queued jobs
@@ -42,6 +41,9 @@ wget = "wget -nd -np -c -r "
 
 #put all the available packages into this object
 package_objects = {}
+
+# debug
+debug = False
 
 '''
 Create a Debian Package definition
@@ -53,6 +55,8 @@ class Deb:
 		mirror = random.choice(mirrors)
 		self.uri = mirror+package.get_field("Filename")
 		self.filename = os.path.join(path, package.get_field("Filename"))
+		if debug:
+			print "debug: package filename %s" % self.filename
 
 	def get_download_uri(self):
 		return self.uri
@@ -160,31 +164,34 @@ def analyze_packages_file_wget(path):
 		deb = Deb(path, package_objects[p])
 		if not deb.verify_deb():
 			cmd = wget+deb.get_download_uri()+' -O '+deb.get_filename()
+			if debug:
+				print "debug: download using uri %s" % cmd
 			jobs.append(cmd)
 
 def download_deb(filename, url):
     try:
-        print "downloading %s from %s" % (filename, url)
-        r = requests.get(url)
-        if r.status_code == requests.codes.ok:
-            print "--- content type is %s" % r.headers['content-type']
-            if 'text/html' in r.headers['content-type']:
-                return False
-            else:
-                try:
-                    print "uri: %s" % url
-                    with open(filename, 'wb') as f:
-                        for chunk in r.iter_content(chunk_size=1024):
-                            if chunk: # filter out keep-alive new chunks
-                                f.write(chunk)
-                                f.flush()
-                    print "downloaded %s filename" % filename
-                    print "done."
-                    return True
-                except (KeyboardInterrupt, SystemExit):
-                    raise
+		print "downloading %s from %s" % (filename, url)
+		r = requests.get(url)
+		if r.status_code == requests.codes.ok:
+			print "--- content type is %s" % r.headers['content-type']
+			if 'text/html' in r.headers['content-type']:
+				return False
+			else:
+				try:
+					print "uri: %s" % url
+					with open(filename, 'wb') as f:
+						for chunk in r.iter_content(chunk_size=1024):
+							if chunk:
+								# filter out keep-alive new chunks
+								f.write(chunk)
+								f.flush()
+					print "downloaded %s filename" % filename
+					print "done."
+					return True
+				except (KeyboardInterrupt, SystemExit):
+					raise
     except IOError:
-        print "Name or service not known"
+		print "Name or service not known"
 
 def call_command(command):
 	try:
@@ -212,7 +219,7 @@ def usage ():
 '''
 Start checking of Debian repository (using wget to download)
 '''
-def test_mirror_wget(path, suite, arch):
+def test_mirror_wget(path, suite, arch, debug=False):
 	print " = start checking Debian mirror consistency = "
 	try:
 		for s in suite:
@@ -220,8 +227,12 @@ def test_mirror_wget(path, suite, arch):
 				for a in arch:
 					arch_folder = "binary-"+a
 					d = os.path.join(path, "dists", s, section, arch_folder)
+					if debug:
+						print "debug: directory %s" % d
 					if os.path.exists(d):
 						packages = os.path.join(d, "Packages.bz2")
+						if debug:
+							print "debug: opening package file %s" % packages
 						if os.path.isfile(packages):
 							f = bz2.BZ2File(packages, 'r')
 							parse_packages_file(f)
@@ -264,7 +275,7 @@ def test_mirror(path, suite, arch):
 							print "error: Packages file %s is missing" % packages
 							continue
 					else:
-						print "error: Architecture %s not exists in this repository" % arch_folder
+						print "error: Architecture %s not exists in this path %s " % (arch_folder, path)
 						continue
 	except (KeyboardInterrupt, SystemExit):
 		print "Caught KeyboardInterrupt, terminating workers"
@@ -278,7 +289,11 @@ Main Function
 '''
 def main(argv):
 	try:
-		opts, args = getopt.getopt(argv,"hs:d:a:",["suite=","directory=","arch=", "help"])
+		repo_path = ''
+		suites = ''
+		archs = ''
+		global debug
+		opts, args = getopt.getopt(argv,"hs:d:a:",["suite=","directory=","arch=", "help", "debug"])
 		for o,val in opts:
 			if o in ("-a", "--arch"):
 				archs = val.split(',')
@@ -286,16 +301,22 @@ def main(argv):
 				repo_path = val
 			elif o in ("-s", "--suite"):
 				suites = val.split(',')
+			elif o in ("--debug"):
+				debug = True
 			else:
 				usage()
 				sys.exit()
 		if not repo_path:
 			repo_path = os.getcwd()
 		# start checking
-		test_mirror_wget(repo_path, suites, archs)
+		test_mirror_wget(repo_path, suites, archs, debug)
 	except getopt.GetoptError:
 		usage()
 		sys.exit(2)
 
 if __name__ == "__main__":
-	main(sys.argv[1:])
+	if len(sys.argv) > 1:
+		main(sys.argv[1:])
+	else:
+		usage()
+		sys.exit()
