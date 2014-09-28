@@ -72,35 +72,39 @@ class Deb:
 		return hash.hexdigest()
 
 	def verify_deb(self):
-		d = os.path.dirname(self.filename)
-		if not os.path.exists(d):
-			# directory missing, create directory
-			os.makedirs(d)
-		if exclude_dbg:
-			if "-dbg" in self.filename:
-				# file is a dbg file
-				return True
-		if (not os.path.isfile(self.filename)):
-			# file not exists
-			print "verify_deb: filename %s is missing" % self.filename
-			return False
-		else:
-			# file exists, verify mimetype and checksum
-			mtype,entype = mimetypes.guess_type(self.filename)
-			md5sum = self.package.get_field("MD5sum")
-			if mtype == 'application/x-debian-package':
-				# its a valid Debian package
-				if not md5sum == self.md5sum():
-					# a Debian package with failed md5sum
-					print "verify_deb: md5sum failed for filename %s" % self.filename
-					return False
-				else:
+		try:
+			d = os.path.dirname(self.filename)
+			if not os.path.exists(d):
+				# directory missing, create directory
+				os.makedirs(d)
+			if exclude_dbg:
+				if "-dbg" in self.filename:
+					# file is a dbg file
 					return True
-			else:
-				# its a Fake file
-				print "verify_deb: mimetype failed, remove fake file %s" % self.filename
-				os.remove(self.filename)
+			if (not os.path.isfile(self.filename)):
+				# file not exists
+				print "verify_deb: filename %s is missing" % self.filename
 				return False
+			else:
+				# file exists, verify mimetype and checksum
+				mtype,entype = mimetypes.guess_type(self.filename)
+				md5sum = self.package.get_field("MD5sum")
+				if mtype == 'application/x-debian-package':
+					# its a valid Debian package
+					if not md5sum == self.md5sum():
+						# a Debian package with failed md5sum
+						print "verify_deb: md5sum failed for filename %s" % self.filename
+						return False
+					else:
+						return True
+				else:
+					# its a Fake file
+					print "verify_deb: mimetype failed, remove fake file %s" % self.filename
+					os.remove(self.filename)
+					return False
+		except (KeyboardInterrupt, SystemExit):
+			raise
+			
 
 	def download(self):
 		try:
@@ -247,6 +251,9 @@ def test_mirror_wget(path, suite, arch, debug=False):
 		print("{} wget jobs queued".format(len(jobs)))
 		pool = Pool(processes=maxjobs)
 		pool.map(call_command, jobs)
+	except (KeyboardInterrupt, SystemExit):
+		print "User Cancelled"
+		sys.exit(2)
 	except:
 		raise
 
